@@ -1,0 +1,92 @@
+<html>
+<head>
+  <!--Load the AJAX API-->
+  <script type="text/javascript" src="https://www.gstatic.com/charts/loader.js"></script>
+  <script src="http://ajax.googleapis.com/ajax/libs/jquery/1.7.2/jquery.min.js"></script>
+  <script src="bower_components/underscore/underscore-min.js"></script>
+  <script src="bower_components/backbone/backbone.js"></script>
+  <script type="text/javascript">
+  window.onload = function () {
+    var Item = Backbone.Model.extend();
+    var List = Backbone.Collection.extend({
+      model: Item,
+      url: "./report.json", //url to send a get request to fetch all json
+      parse: function(data) {
+        return data.records; // store just the record property in our model for usage in collection
+      }
+    });
+    var ChartView = Backbone.View.extend({
+      el: $('body'), //the element to which we need to render our html
+      events: { //all our events
+        'change select#types': 'drawChart' // a change event on any html type, `click button#buttonid` can also be used for click event
+      },
+      initialize: function(){ // main constructor function, will be executed first
+        var self = this
+        this.collection = new List(); // create a new collection named List
+        this.render(); //render our view
+      },
+      render: function(){
+        var self = this;
+        _.bindAll(this, 'render', 'getData', 'drawChart') //bind all functions to this for usage in other areas of view
+        // select element appended to body
+        $(this.el).append('<select id="types">'+
+        '<option value="sales">Overall Sales</option>'+
+        '<option value="orders">Overall Orders</option>'+
+        '<option value="clickThruRate">Click Thru Rate</option>'+
+        '<option value="pageViews">Page Views</option>'+
+        '</select>');
+        // line chart div tag appended to body to render chart on later
+        $(this.el).append('<div id="linechart"></div>');
+        // Load the Visualization API and the corechart package.
+        google.charts.load('current', {'packages':['line']});
+        // Set a callback self.drawChart to run when the Google Visualization API is loaded.
+        google.charts.setOnLoadCallback(self.drawChart);
+      },
+      getData: function(){
+        //ajax GET request initiated, use save() instead of fetch() for POST request
+        return this.collection.fetch()
+      },
+      drawChart: function () {
+        //call the ajax method
+        this.getData()
+        .then(function (response) {
+          var records = response.records;
+          var type = $('#types').val();
+          var typeName = $('#types option:selected').text()
+          // create google visualization dataTable instance to populate chart
+          var data = new google.visualization.DataTable();
+          data.addColumn('date', 'Date');
+          data.addColumn('number', typeName);
+
+          // loop through all data from json file and add it to our dataTable
+          records.forEach(function (record) {
+            data.addRow([new Date(record.date), record[type]])
+          })
+
+          //chart options, can be extended to modify chart and style it
+          var options = {
+            chart: {
+              title: typeName
+            },
+            width: 900,
+            height: 500,
+          };
+          // applying google chart to our element
+          var chart = new google.charts.Line(document.getElementById('linechart'));
+          //drawing data on chart
+          chart.draw(data, options);
+        })
+      }
+
+    });
+    // start rendering our view, our first step to initializing chart and its options
+    var chart_view = new ChartView()
+  }
+
+  </script>
+</head>
+
+<body>
+
+</body>
+</html>
